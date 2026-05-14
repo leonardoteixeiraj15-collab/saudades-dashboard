@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Saudades do Norte · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --ouro: #E8A000;
+    --ouro-light: #FFD166;
+    --ouro-dark: #B07800;
+    --terra: #8B4513;
+    --terra-light: #C4773B;
+    --terra-dark: #5A2D0C;
+    --areia: #F5E6C8;
+    --areia-dark: #E8D4A0;
+    --bg: #1A0F00;
+    --bg2: #241500;
+    --bg3: #2E1A00;
+    --card: #2A1600;
+    --card2: #321C00;
+    --text: #F5E6C8;
+    --text2: #C4A882;
+    --text3: #8B7355;
+    --verde: #2ECC71;
+    --vermelho: #E74C3C;
+    --border: rgba(232,160,0,0.15);
+    --border2: rgba(232,160,0,0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: radial-gradient(ellipse at top, #3D2200 0%, #1A0F00 60%);
+  }
+  .login-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--ouro);
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 0.25rem;
+  }
+  .login-sub {
+    font-size: 0.8rem;
+    color: var(--text3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .login-card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 360px;
+  }
+  .login-card h2 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--text); }
+  .field { margin-bottom: 1rem; }
+  .field label { font-size: 0.75rem; color: var(--text3); letter-spacing: 0.05em; display: block; margin-bottom: 0.4rem; }
+  .field input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 0.75rem 1rem; font-size: 1rem;
+    color: var(--text); font-family: 'Inter', sans-serif; outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--ouro); }
+  .btn-primary {
+    width: 100%; background: var(--ouro); color: #1A0F00;
+    border: none; border-radius: 10px; padding: 0.9rem;
+    font-size: 0.95rem; font-weight: 700; font-family: 'Syne', sans-serif;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.03em;
+  }
+  .btn-primary:hover { background: var(--ouro-light); transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(0.98); }
+  .login-error { color: var(--vermelho); font-size: 0.8rem; margin-top: 0.75rem; text-align: center; display: none; }
+
+  /* ── APP ── */
+  #app { display: none; min-height: 100vh; padding-bottom: 80px; }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .app-header .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--ouro); }
+  .app-header .logo span { color: var(--text2); font-weight: 400; font-size: 0.75rem; display: block; }
+  .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+  .btn-icon {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1rem; color: var(--text2); transition: all 0.2s;
+  }
+  .btn-icon:hover { border-color: var(--ouro); color: var(--ouro); }
+
+  /* ── NAV BOTTOM ── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex; z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 0.6rem 0.5rem 0.5rem;
+    cursor: pointer; transition: all 0.2s; color: var(--text3);
+    font-size: 0.65rem; gap: 3px; border: none; background: none;
+  }
+  .nav-item .nav-icon { font-size: 1.3rem; transition: transform 0.2s; }
+  .nav-item.active { color: var(--ouro); }
+  .nav-item.active .nav-icon { transform: scale(1.1); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 1.25rem; }
+  .page.active { display: block; }
+
+  /* ── METRICS GRID ── */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem; }
+  .metric-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1rem;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: var(--border2); }
+  .metric-card .m-label { font-size: 0.7rem; color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.4rem; }
+  .metric-card .m-value { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--text); }
+  .metric-card .m-value.green { color: var(--verde); }
+  .metric-card .m-value.red { color: var(--vermelho); }
+  .metric-card .m-value.gold { color: var(--ouro); }
+  .metric-card .m-sub { font-size: 0.7rem; color: var(--text3); margin-top: 0.2rem; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+    color: var(--ouro); letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem;
+  }
+  .card-title { font-size: 0.8rem; color: var(--text3); margin-bottom: 1rem; letter-spacing: 0.04em; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
+  .form-grid.cols2 { grid-template-columns: 1fr 1fr; }
+  .f-label { font-size: 0.72rem; color: var(--text3); margin-bottom: 0.3rem; display: block; }
+  .f-input, .f-select {
+    width: 100%; background: var(--bg3);
+    border: 1px solid var(--border2); border-radius: 10px;
+    padding: 0.7rem 0.9rem; font-size: 0.9rem; color: var(--text);
+    font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
+  }
+  .f-input:focus, .f-select:focus { border-color: var(--ouro); }
+  .f-select option { background: var(--bg2); }
+  .btn-add {
+    width: 100%; background: var(--ouro); color: #1A0F00;
+    border: none; border-radius: 10px; padding: 0.8rem;
+    font-size: 0.9rem; font-weight: 700; font-family: 'Syne', sans-serif;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  }
+  .btn-add:hover { background: var(--ouro-light); }
+  .btn-add:active { transform: scale(0.98); }
+
+  /* ── LISTA ── */
+  .lista-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.85rem 0; border-bottom: 1px solid var(--border);
+  }
+  .lista-item:last-child { border-bottom: none; }
+  .lista-item .li-info { flex: 1; min-width: 0; }
+  .lista-item .li-nome { font-size: 0.9rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lista-item .li-sub { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+  .lista-item .li-valor { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-left: 0.75rem; white-space: nowrap; }
+  .li-valor.green { color: var(--verde); }
+  .li-valor.red { color: var(--vermelho); }
+  .btn-del {
+    background: none; border: none; color: var(--text3); font-size: 1.1rem;
+    cursor: pointer; padding: 4px 4px 4px 8px; transition: color 0.2s;
+  }
+  .btn-del:hover { color: var(--vermelho); }
+  .empty-state {
+    text-align: center; padding: 2rem; color: var(--text3); font-size: 0.85rem;
+  }
+  .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+  /* ── BADGE ── */
+  .badge {
+    font-size: 0.65rem; padding: 2px 7px; border-radius: 20px;
+    font-weight: 600; letter-spacing: 0.03em;
+  }
+  .badge-pix { background: rgba(46,204,113,0.15); color: #2ECC71; }
+  .badge-din { background: rgba(232,160,0,0.15); color: var(--ouro); }
+  .badge-cred { background: rgba(52,152,219,0.15); color: #3498DB; }
+  .badge-deb { background: rgba(155,89,182,0.15); color: #9B59B6; }
+  .badge-cat { background: rgba(196,119,59,0.15); color: var(--terra-light); }
+
+  /* ── CHART ── */
+  .chart-wrap { position: relative; }
+
+  /* ── BARRA PROGRESSO ── */
+  .prog-bar { margin-bottom: 0.75rem; }
+  .prog-head { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; }
+  .prog-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--card2); border: 1px solid var(--border2);
+    color: var(--text); padding: 0.6rem 1.2rem; border-radius: 20px;
+    font-size: 0.85rem; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── PRODUTO TABLE ── */
+  .prod-search { margin-bottom: 0.75rem; }
+  .prod-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.7rem 0; border-bottom: 1px solid var(--border);
+  }
+  .prod-item:last-child { border-bottom: none; }
+  .prod-cod { font-size: 0.65rem; color: var(--text3); width: 36px; flex-shrink: 0; }
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-nome { font-size: 0.85rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prod-cat { font-size: 0.7rem; color: var(--text3); }
+  .prod-preco { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 600; color: var(--ouro); white-space: nowrap; }
+
+  /* ── CAIXA TABLE ── */
+  .caixa-row {
+    display: grid; grid-template-columns: auto 1fr 1fr 1fr;
+    gap: 0.5rem; padding: 0.7rem 0; border-bottom: 1px solid var(--border);
+    align-items: center; font-size: 0.8rem;
+  }
+  .caixa-row.header { color: var(--text3); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .caixa-row:last-child { border-bottom: none; }
+
+  /* ── CONFIG ── */
+  .config-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+  .config-item:last-child { border-bottom: none; }
+  .config-label { font-size: 0.9rem; color: var(--text); }
+  .config-sub { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+  .btn-secondary {
+    background: var(--bg3); border: 1px solid var(--border2); color: var(--text2);
+    border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.8rem;
+    cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--ouro); color: var(--ouro); }
+  .btn-danger {
+    background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); color: var(--vermelho);
+    border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.8rem;
+    cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+  }
+
+  /* ── LOADING ── */
+  .loading { text-align: center; padding: 2rem; color: var(--text3); font-size: 0.85rem; }
+  .spinner {
+    width: 24px; height: 24px; border: 2px solid var(--border2);
+    border-top-color: var(--ouro); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 0.5rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── DECORATIVO ── */
+  .page-hero {
+    text-align: center; padding: 1rem 0 1.5rem;
+    border-bottom: 1px solid var(--border); margin-bottom: 1.25rem;
+  }
+  .page-hero h2 { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--ouro); }
+  .page-hero p { font-size: 0.78rem; color: var(--text3); margin-top: 0.2rem; }
+
+  @media (min-width: 500px) {
+    .metrics { grid-template-columns: repeat(4, 1fr); }
+    .page { max-width: 600px; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">🌽 Saudades<br>do Norte</div>
+  <div class="login-sub">Painel de Controle</div>
+  <div class="login-card">
+    <h2>Acesso restrito</h2>
+    <div class="field">
+      <label>USUÁRIO</label>
+      <input type="text" id="login-user" placeholder="seu usuário" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>SENHA</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Entrar →</button>
+    <div class="login-error" id="login-error">Usuário ou senha incorretos</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="app-header">
+    <div class="logo">🌽 Saudades do Norte <span id="header-date"></span></div>
+    <div class="header-actions">
+      <div class="btn-icon" onclick="refreshData()" title="Atualizar">↻</div>
+      <div class="btn-icon" onclick="doLogout()" title="Sair">⏏</div>
+    </div>
+  </header>
+
+  <!-- PAGES -->
+  <div id="page-resumo" class="page active">
+    <div class="page-hero">
+      <h2>Visão Geral</h2>
+      <p id="resumo-periodo">Carregando...</p>
+    </div>
+    <div class="metrics" id="metrics-resumo"></div>
+    <div class="section-title">Vendas por pagamento</div>
+    <div class="card">
+      <div class="chart-wrap" style="height:200px"><canvas id="chartPag" role="img" aria-label="Vendas por forma de pagamento"></canvas></div>
+      <div id="leg-pag" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:11px;color:var(--text3)"></div>
+    </div>
+    <div class="section-title">Categorias em estoque</div>
+    <div class="card" id="cat-bars"></div>
+  </div>
+
+  <div id="page-vendas" class="page">
+    <div class="page-hero"><h2>Vendas</h2><p>Registre cada venda</p></div>
+    <div class="card">
+      <div class="card-title">NOVA VENDA</div>
+      <div class="form-grid">
+        <div>
+          <span class="f-label">PRODUTO</span>
+          <select class="f-select" id="v-produto"></select>
+        </div>
+      </div>
+      <div class="form-grid cols2">
+        <div>
+          <span class="f-label">QUANTIDADE</span>
+          <input type="number" class="f-input" id="v-qtd" min="1" value="1">
+        </div>
+        <div>
+          <span class="f-label">PAGAMENTO</span>
+          <select class="f-select" id="v-pag">
+            <option value="PIX">PIX</option>
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Crédito">Crédito</option>
+            <option value="Débito">Débito</option>
+          </select>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.8rem;color:var(--text3)">Total da venda</span>
+        <span id="v-total-preview" style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--ouro)">R$ 0,00</span>
+      </div>
+      <button class="btn-add" onclick="addVenda()">＋ Registrar Venda</button>
+    </div>
+    <div class="metrics" id="metrics-vendas"></div>
+    <div class="section-title">Histórico de hoje</div>
+    <div class="card" id="lista-vendas"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
+  </div>
+
+  <div id="page-despesas" class="page">
+    <div class="page-hero"><h2>Despesas</h2><p>Controle de saídas</p></div>
+    <div class="card">
+      <div class="card-title">NOVA DESPESA</div>
+      <div class="form-grid">
+        <div>
+          <span class="f-label">DESCRIÇÃO</span>
+          <input type="text" class="f-input" id="d-desc" placeholder="Ex: Reposição de estoque...">
+        </div>
+      </div>
+      <div class="form-grid cols2">
+        <div>
+          <span class="f-label">VALOR (R$)</span>
+          <input type="number" class="f-input" id="d-val" min="0.01" step="0.01" placeholder="0,00">
+        </div>
+        <div>
+          <span class="f-label">CATEGORIA</span>
+          <select class="f-select" id="d-cat">
+            <option>Estoque</option>
+            <option>Aluguel</option>
+            <option>Energia</option>
+            <option>Transporte</option>
+            <option>Outros</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addDespesa()">＋ Registrar Despesa</button>
+    </div>
+    <div class="metrics" id="metrics-despesas"></div>
+    <div class="section-title">Histórico</div>
+    <div class="card" id="lista-despesas"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
+  </div>
+
+  <div id="page-produtos" class="page">
+    <div class="page-hero"><h2>Produtos</h2><p>85 itens cadastrados</p></div>
+    <div class="metrics" id="metrics-produtos"></div>
+    <div class="section-title">Catálogo</div>
+    <div class="card">
+      <div class="prod-search">
+        <input type="search" class="f-input" id="busca" placeholder="🔍 Buscar produto..." oninput="renderProdutos()">
+      </div>
+      <div id="lista-produtos"></div>
+    </div>
+  </div>
+
+  <div id="page-caixa" class="page">
+    <div class="page-hero"><h2>Caixa</h2><p>Fluxo financeiro</p></div>
+    <div class="metrics" id="metrics-caixa"></div>
+    <div class="section-title">Fluxo do período</div>
+    <div class="card" id="fluxo-caixa"></div>
+    <div class="section-title">Evolução do saldo</div>
+    <div class="card">
+      <div class="chart-wrap" style="height:180px"><canvas id="chartSaldo" role="img" aria-label="Evolução do saldo"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="goPage('resumo',this)">
+      <span class="nav-icon">📊</span>
+      <span>Resumo</span>
+    </button>
+    <button class="nav-item" onclick="goPage('vendas',this)">
+      <span class="nav-icon">🛒</span>
+      <span>Vendas</span>
+    </button>
+    <button class="nav-item" onclick="goPage('despesas',this)">
+      <span class="nav-icon">💸</span>
+      <span>Despesas</span>
+    </button>
+    <button class="nav-item" onclick="goPage('produtos',this)">
+      <span class="nav-icon">📦</span>
+      <span>Produtos</span>
+    </button>
+    <button class="nav-item" onclick="goPage('caixa',this)">
+      <span class="nav-icon">💰</span>
+      <span>Caixa</span>
+    </button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIGURAÇÃO — EDITE AQUI
+// ═══════════════════════════════════════════════
+const CONFIG = {
+  usuario: 'admin',
+  senha: 'saudades2026',
+  supabaseUrl: 'https://baasgwndykkkhblrbtta.supabase.co/rest/v1/',
+  supabaseKey: 'sb_publishable_VVnviK2jds9AExxp32YXbA_w4u4Gsqo',
+};
+
+// ═══════════════════════════════════════════════
+// PRODUTOS
+// ═══════════════════════════════════════════════
+const PRODUTOS = [
+  {cod:'P001',nome:'Rapadura Ceará',cat:'Rapadura',preco:8.9},
+  {cod:'P002',nome:'Rapadura Jr',cat:'Rapadura',preco:3.9},
+  {cod:'P003',nome:'Rapadura Ceará sabor',cat:'Rapadura',preco:8.9},
+  {cod:'P004',nome:'Rapadura Fácil',cat:'Rapadura',preco:11.9},
+  {cod:'P005',nome:'Rapadura Quadrada',cat:'Rapadura',preco:18.9},
+  {cod:'P006',nome:'Rapadura Ceará G',cat:'Rapadura',preco:19.9},
+  {cod:'P007',nome:'Rapadura Castilho',cat:'Rapadura',preco:10.9},
+  {cod:'P008',nome:'Beiju do Norte sal',cat:'Beiju/Tapioca',preco:12.9},
+  {cod:'P009',nome:'Beiju coco',cat:'Beiju/Tapioca',preco:7.5},
+  {cod:'P010',nome:'Beiju sal',cat:'Beiju/Tapioca',preco:7.5},
+  {cod:'P011',nome:'Tapioca Canoinha',cat:'Beiju/Tapioca',preco:12.9},
+  {cod:'P012',nome:'Tapioca Lopes',cat:'Beiju/Tapioca',preco:11.0},
+  {cod:'P013',nome:'Massa Puba Pomb',cat:'Farináceos',preco:18.9},
+  {cod:'P014',nome:'Flocão Coringa milho',cat:'Farináceos',preco:4.9},
+  {cod:'P015',nome:'Flocão Nutrivita milho',cat:'Farináceos',preco:4.9},
+  {cod:'P016',nome:'Flocão Nutrivita arroz',cat:'Farináceos',preco:5.9},
+  {cod:'P017',nome:'Farofa Art sab.',cat:'Farináceos',preco:9.9},
+  {cod:'P018',nome:'Fubá m. torrado',cat:'Farináceos',preco:6.9},
+  {cod:'P019',nome:'Açúcar mascavo',cat:'Farináceos',preco:11.0},
+  {cod:'P020',nome:'Doce Leite Vai',cat:'Doces',preco:10.9},
+  {cod:'P021',nome:'Doce sabor Vai',cat:'Doces',preco:6.9},
+  {cod:'P022',nome:'Doce Ensa sab',cat:'Doces',preco:4.9},
+  {cod:'P023',nome:'Doce açaí',cat:'Doces',preco:5.9},
+  {cod:'P024',nome:'Doce bananada',cat:'Doces',preco:13.9},
+  {cod:'P025',nome:'Doce Sabia Mariola',cat:'Doces',preco:9.9},
+  {cod:'P026',nome:'Doce tablete Sabiá',cat:'Doces',preco:9.9},
+  {cod:'P027',nome:'Doce banana sabor',cat:'Doces',preco:7.5},
+  {cod:'P028',nome:'Doce Carolina coco',cat:'Doces',preco:4.9},
+  {cod:'P029',nome:'Doce Queba Queixo',cat:'Doces',preco:32.9},
+  {cod:'P030',nome:'Doce JL cocada',cat:'Doces',preco:8.9},
+  {cod:'P031',nome:'Doce JL coco gengibre',cat:'Doces',preco:6.9},
+  {cod:'P032',nome:'Doce fondant',cat:'Doces',preco:7.9},
+  {cod:'P033',nome:'Doce cumbuca mineira',cat:'Doces',preco:26.9},
+  {cod:'P035',nome:'Doce lanche 500g',cat:'Doces',preco:15.9},
+  {cod:'P036',nome:'Doce lanche 800g',cat:'Doces',preco:19.9},
+  {cod:'P037',nome:'Doce lanche 1kg',cat:'Doces',preco:23.9},
+  {cod:'P038',nome:'Doce Atum banana',cat:'Doces',preco:16.9},
+  {cod:'P039',nome:'Doce Jussara',cat:'Doces',preco:23.9},
+  {cod:'P040',nome:'Doce Pé de moleque',cat:'Doces',preco:24.9},
+  {cod:'P041',nome:'Doce goiabada cascão m.',cat:'Doces',preco:12.9},
+  {cod:'P042',nome:'Doce goiabada cascão mineira',cat:'Doces',preco:14.9},
+  {cod:'P043',nome:'Doce geleia poderosa',cat:'Doces',preco:10.9},
+  {cod:'P044',nome:'Doce buriti',cat:'Doces',preco:19.9},
+  {cod:'P045',nome:'Doce alfinim',cat:'Doces',preco:7.9},
+  {cod:'P046',nome:'Doce tambaú goiaba',cat:'Doces',preco:14.9},
+  {cod:'P047',nome:'Doce tambaú banana',cat:'Doces',preco:17.9},
+  {cod:'P048',nome:'Doce de jaca',cat:'Doces',preco:9.9},
+  {cod:'P049',nome:'Doce cocada itabira',cat:'Doces',preco:15.5},
+  {cod:'P050',nome:'Granola 500g',cat:'Granola',preco:18.9},
+  {cod:'P051',nome:'Granola 1kg',cat:'Granola',preco:36.9},
+  {cod:'P052',nome:'Biscoito sabor mineiro',cat:'Biscoitos',preco:7.9},
+  {cod:'P053',nome:'Biscoito sabor minas',cat:'Biscoitos',preco:10.9},
+  {cod:'P054',nome:'Biscoito petyan',cat:'Biscoitos',preco:7.9},
+  {cod:'P055',nome:'Biscoito 3 de maio',cat:'Biscoitos',preco:9.9},
+  {cod:'P056',nome:'Biscoito mini cracker',cat:'Biscoitos',preco:10.9},
+  {cod:'P066',nome:'Manteiga garrafa 500g',cat:'Conservas',preco:0},
+  {cod:'P067',nome:'Manteiga garrafa 200g',cat:'Conservas',preco:0},
+  {cod:'P069',nome:'Pepino em conserva',cat:'Conservas',preco:0},
+  {cod:'P071',nome:'Pequi caroço',cat:'Conservas',preco:0},
+  {cod:'P072',nome:'Pequi fatiado',cat:'Conservas',preco:0},
+  {cod:'P073',nome:'Pimenta biquinho 840g',cat:'Pimentas',preco:0},
+  {cod:'P074',nome:'Pimenta biquinho 540g',cat:'Pimentas',preco:0},
+  {cod:'P075',nome:'Pimenta malagueta 480g',cat:'Pimentas',preco:0},
+  {cod:'P076',nome:'Pimenta malagueta 130g',cat:'Pimentas',preco:0},
+  {cod:'P081',nome:'Molho Carolina Reaper',cat:'Pimentas',preco:0},
+  {cod:'P082',nome:'Molho Scorpion',cat:'Pimentas',preco:0},
+  {cod:'P084',nome:'Óleo de pequi Januária',cat:'Conservas',preco:0},
+  {cod:'P085',nome:'Óleo pequi nativa',cat:'Conservas',preco:0},
+];
+
+// ═══════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════
+let supabase = null;
+let vendas = [], despesas = [];
+let chartPagInst = null, chartSaldoInst = null;
+const hoje = new Date().toISOString().split('T')[0];
+
+// ═══════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (u === CONFIG.usuario && p === CONFIG.senha) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('header-date').textContent = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
+    initSupabase();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+  }
+}
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-pass').value = '';
+}
+
+// ═══════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════
+async function initSupabase() {
+  try {
+    if (CONFIG.supabaseUrl !== 'COLE_SUA_URL_SUPABASE_AQUI') {
+      supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    }
+    await carregarDados();
+  } catch(e) {
+    console.warn('Supabase não configurado, usando dados locais');
+    await carregarDados();
+  }
+  renderAll();
+}
+
+async function carregarDados() {
+  if (supabase) {
+    try {
+      const [rv, rd] = await Promise.all([
+        supabase.from('vendas').select('*').order('created_at', {ascending: false}),
+        supabase.from('despesas').select('*').order('created_at', {ascending: false})
+      ]);
+      if (rv.data) vendas = rv.data;
+      if (rd.data) despesas = rd.data;
+      return;
+    } catch(e) {}
+  }
+  // fallback localStorage
+  vendas = JSON.parse(localStorage.getItem('sdn_vendas') || '[]');
+  despesas = JSON.parse(localStorage.getItem('sdn_despesas') || '[]');
+}
+
+function salvarLocal() {
+  localStorage.setItem('sdn_vendas', JSON.stringify(vendas));
+  localStorage.setItem('sdn_despesas', JSON.stringify(despesas));
+}
+
+// ═══════════════════════════════════════════════
+// NAVEGAÇÃO
+// ═══════════════════════════════════════════════
+function goPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'resumo') renderResumo();
+  if (name === 'vendas') renderVendas();
+  if (name === 'despesas') renderDespesas();
+  if (name === 'produtos') renderProdutos();
+  if (name === 'caixa') renderCaixa();
+}
+
+function renderAll() {
+  renderResumo();
+  renderVendas();
+  renderDespesas();
+  renderProdutos();
+  renderCaixa();
+}
+
+async function refreshData() {
+  showToast('Atualizando dados...');
+  await carregarDados();
+  renderAll();
+  showToast('✓ Atualizado!');
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+const fmt = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const totalV = () => vendas.reduce((s, v) => s + Number(v.total), 0);
+const totalD = () => despesas.reduce((s, d) => s + Number(d.valor), 0);
+const lucro = () => totalV() - totalD();
+const vendasHoje = () => vendas.filter(v => v.data === hoje);
+const totalVHoje = () => vendasHoje().reduce((s, v) => s + Number(v.total), 0);
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function badgePag(pag) {
+  const m = {PIX:'badge-pix',Dinheiro:'badge-din',Crédito:'badge-cred',Débito:'badge-deb'};
+  return `<span class="badge ${m[pag]||'badge-din'}">${pag}</span>`;
+}
+
+function renderMetrics(id, arr) {
+  document.getElementById(id).innerHTML = arr.map(m =>
+    `<div class="metric-card">
+      <div class="m-label">${m.l}</div>
+      <div class="m-value ${m.cls||''}">${m.v}</div>
+      ${m.s ? `<div class="m-sub">${m.s}</div>` : ''}
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+// RESUMO
+// ═══════════════════════════════════════════════
+function renderResumo() {
+  const tv = totalV(), td = totalD(), l = lucro();
+  document.getElementById('resumo-periodo').textContent =
+    `${vendas.length} vendas · ${despesas.length} despesas`;
+  renderMetrics('metrics-resumo', [
+    {l:'Total Vendas', v: fmt(tv), cls:'gold'},
+    {l:'Despesas', v: fmt(td), cls:'red'},
+    {l:'Lucro Bruto', v: fmt(l), cls: l>=0 ? 'green' : 'red'},
+    {l:'Hoje', v: fmt(totalVHoje()), cls:'gold', s: vendasHoje().length + ' vendas'},
+  ]);
+
+  // Chart pagamento
+  const pagMap = {};
+  vendas.forEach(v => pagMap[v.pag] = (pagMap[v.pag]||0) + Number(v.total));
+  const pags = Object.keys(pagMap);
+  const cores = ['#2ECC71','#E8A000','#3498DB','#9B59B6'];
+  if (chartPagInst) { chartPagInst.destroy(); chartPagInst = null; }
+  if (pags.length) {
+    chartPagInst = new Chart(document.getElementById('chartPag'), {
+      type: 'doughnut',
+      data: { labels: pags, datasets: [{ data: pags.map(p => +pagMap[p].toFixed(2)), backgroundColor: cores, borderWidth: 0, hoverOffset: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+    });
+    document.getElementById('leg-pag').innerHTML = pags.map((p,i) =>
+      `<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${cores[i%4]}"></span>${p} ${fmt(pagMap[p])}</span>`
+    ).join('');
+  } else {
+    document.getElementById('chartPag').parentNode.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>Nenhuma venda ainda</div>';
+  }
+
+  // Barras categorias
+  const catMap = {};
+  PRODUTOS.forEach(p => catMap[p.cat] = (catMap[p.cat]||0)+1);
+  const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const maxC = cats[0]?cats[0][1]:1;
+  const barCores = ['#E8A000','#C4773B','#2ECC71','#3498DB','#9B59B6','#E74C3C'];
+  document.getElementById('cat-bars').innerHTML = cats.map(([c,n],i) =>
+    `<div class="prog-bar">
+      <div class="prog-head"><span style="color:var(--text2)">${c}</span><span style="color:var(--text3)">${n} produtos</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${Math.round(n/maxC*100)}%;background:${barCores[i%6]}"></div></div>
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+// VENDAS
+// ═══════════════════════════════════════════════
+function renderVendas() {
+  const prods = PRODUTOS.filter(p => p.preco > 0);
+  document.getElementById('v-produto').innerHTML = prods.map(p =>
+    `<option value="${p.cod}">${p.nome} · ${fmt(p.preco)}</option>`
+  ).join('');
+  atualizarPreviewVenda();
+
+  const tv = totalV(), vh = vendasHoje();
+  renderMetrics('metrics-vendas', [
+    {l:'Total Geral', v: fmt(tv), cls:'gold'},
+    {l:'Vendas Hoje', v: fmt(totalVHoje()), cls:'green'},
+    {l:'Qtd Hoje', v: vh.length, s: 'transações'},
+    {l:'Ticket Médio', v: vh.length ? fmt(totalVHoje()/vh.length) : 'R$ 0,00'},
+  ]);
+
+  const el = document.getElementById('lista-vendas');
+  const lista = [...vendas].slice(0, 30);
+  if (!lista.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div>Nenhuma venda registrada</div>`;
+    return;
+  }
+  el.innerHTML = lista.map((v, i) => `
+    <div class="lista-item">
+      <div class="li-info">
+        <div class="li-nome">${v.nome}</div>
+        <div class="li-sub">${v.data} · ${v.hora} · ${v.qtd}x · ${badgePag(v.pag)}</div>
+      </div>
+      <div class="li-valor green">${fmt(Number(v.total))}</div>
+      <button class="btn-del" onclick="delVenda(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+
+function atualizarPreviewVenda() {
+  const cod = document.getElementById('v-produto')?.value;
+  const qtd = parseInt(document.getElementById('v-qtd')?.value) || 1;
+  const prod = PRODUTOS.find(p => p.cod === cod);
+  const total = prod ? prod.preco * qtd : 0;
+  const el = document.getElementById('v-total-preview');
+  if (el) el.textContent = fmt(total);
+}
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'v-produto' || e.target.id === 'v-qtd') atualizarPreviewVenda();
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'v-qtd') atualizarPreviewVenda();
+});
+
+async function addVenda() {
+  const cod = document.getElementById('v-produto').value;
+  const qtd = parseInt(document.getElementById('v-qtd').value) || 1;
+  const pag = document.getElementById('v-pag').value;
+  const prod = PRODUTOS.find(p => p.cod === cod);
+  if (!prod) return;
+  const now = new Date();
+  const venda = {
+    cod, nome: prod.nome, cat: prod.cat, preco: prod.preco,
+    qtd, total: +(prod.preco * qtd).toFixed(2), pag,
+    data: now.toLocaleDateString('pt-BR'),
+    hora: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    created_at: now.toISOString()
+  };
+  vendas.unshift(venda);
+  if (supabase) {
+    try { await supabase.from('vendas').insert([venda]); } catch(e) {}
+  }
+  salvarLocal();
+  renderVendas();
+  renderResumo();
+  showToast(`✓ Venda de ${fmt(venda.total)} registrada!`);
+  document.getElementById('v-qtd').value = '1';
+  atualizarPreviewVenda();
+}
+
+async function delVenda(i) {
+  const v = vendas[i];
+  vendas.splice(i, 1);
+  if (supabase && v.id) {
+    try { await supabase.from('vendas').delete().eq('id', v.id); } catch(e) {}
+  }
+  salvarLocal();
+  renderVendas();
+  renderResumo();
+  showToast('Venda removida');
+}
+
+// ═══════════════════════════════════════════════
+// DESPESAS
+// ═══════════════════════════════════════════════
+function renderDespesas() {
+  const td = totalD(), l = lucro();
+  renderMetrics('metrics-despesas', [
+    {l:'Total Despesas', v: fmt(td), cls:'red'},
+    {l:'Lançamentos', v: despesas.length},
+    {l:'Lucro Líquido', v: fmt(l), cls: l>=0 ? 'green' : 'red'},
+    {l:'Média', v: despesas.length ? fmt(td/despesas.length) : 'R$ 0,00'},
+  ]);
+
+  const el = document.getElementById('lista-despesas');
+  if (!despesas.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div>Nenhuma despesa registrada</div>`;
+    return;
+  }
+  el.innerHTML = despesas.slice(0, 30).map((d, i) => `
+    <div class="lista-item">
+      <div class="li-info">
+        <div class="li-nome">${d.descricao}</div>
+        <div class="li-sub">${d.data} · ${d.hora} · <span class="badge badge-cat">${d.cat||'Outros'}</span></div>
+      </div>
+      <div class="li-valor red">${fmt(Number(d.valor))}</div>
+      <button class="btn-del" onclick="delDespesa(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+
+async function addDespesa() {
+  const descricao = document.getElementById('d-desc').value.trim();
+  const val = parseFloat(document.getElementById('d-val').value) || 0;
+  const cat = document.getElementById('d-cat').value;
+  if (!descricao || val <= 0) { showToast('⚠ Preencha descrição e valor'); return; }
+  const now = new Date();
+  const desp = {
+    descricao, valor: val, cat,
+    data: now.toLocaleDateString('pt-BR'),
+    hora: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    created_at: now.toISOString()
+  };
+  despesas.unshift(desp);
+  if (supabase) {
+    try { await supabase.from('despesas').insert([desp]); } catch(e) {}
+  }
+  salvarLocal();
+  renderDespesas();
+  renderResumo();
+  showToast(`✓ Despesa de ${fmt(val)} registrada!`);
+  document.getElementById('d-desc').value = '';
+  document.getElementById('d-val').value = '';
+}
+
+async function delDespesa(i) {
+  const d = despesas[i];
+  despesas.splice(i, 1);
+  if (supabase && d.id) {
+    try { await supabase.from('despesas').delete().eq('id', d.id); } catch(e) {}
+  }
+  salvarLocal();
+  renderDespesas();
+  renderResumo();
+  showToast('Despesa removida');
+}
+
+// ═══════════════════════════════════════════════
+// PRODUTOS
+// ═══════════════════════════════════════════════
+function renderProdutos() {
+  const cats = [...new Set(PRODUTOS.map(p => p.cat))];
+  const comPreco = PRODUTOS.filter(p => p.preco > 0).length;
+  renderMetrics('metrics-produtos', [
+    {l:'Total de Produtos', v: PRODUTOS.length, cls:'gold'},
+    {l:'Categorias', v: cats.length},
+    {l:'Com Preço', v: comPreco, cls:'green'},
+    {l:'Sem Preço', v: PRODUTOS.length - comPreco, cls: PRODUTOS.length - comPreco ? 'red' : ''},
+  ]);
+
+  const q = (document.getElementById('busca')?.value || '').toLowerCase();
+  const lista = PRODUTOS.filter(p => !q || p.nome.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q));
+  document.getElementById('lista-produtos').innerHTML = lista.length ? lista.map(p => `
+    <div class="prod-item">
+      <span class="prod-cod">${p.cod}</span>
+      <div class="prod-info">
+        <div class="prod-nome">${p.nome}</div>
+        <div class="prod-cat">${p.cat}</div>
+      </div>
+      <span class="prod-preco">${p.preco ? fmt(p.preco) : '—'}</span>
+    </div>`
+  ).join('') : `<div class="empty-state">Nenhum produto encontrado</div>`;
+}
+
+// ═══════════════════════════════════════════════
+// CAIXA
+// ═══════════════════════════════════════════════
+function renderCaixa() {
+  const tv = totalV(), td = totalD(), l = lucro();
+  const margem = tv > 0 ? Math.round(l/tv*100) : 0;
+  renderMetrics('metrics-caixa', [
+    {l:'Entradas', v: fmt(tv), cls:'green'},
+    {l:'Saídas', v: fmt(td), cls:'red'},
+    {l:'Saldo', v: fmt(l), cls: l>=0 ? 'green' : 'red'},
+    {l:'Margem', v: margem + '%', cls: margem>=0 ? 'green' : 'red'},
+  ]);
+
+  const dias = [...new Set([...vendas.map(v=>v.data), ...despesas.map(d=>d.data)])].sort();
+  const el = document.getElementById('fluxo-caixa');
+  if (!dias.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">💰</div>Sem movimentações ainda</div>`;
+  } else {
+    let acum = 0;
+    el.innerHTML = `
+      <div class="caixa-row header"><span>Data</span><span>Entradas</span><span>Saídas</span><span>Saldo</span></div>
+      ${dias.map(d => {
+        const e = vendas.filter(v=>v.data===d).reduce((s,v)=>s+Number(v.total),0);
+        const s = despesas.filter(v=>v.data===d).reduce((s,v)=>s+Number(v.valor),0);
+        acum += e - s;
+        return `<div class="caixa-row">
+          <span style="color:var(--text3);font-size:0.72rem">${d}</span>
+          <span style="color:var(--verde)">${e ? fmt(e) : '—'}</span>
+          <span style="color:var(--vermelho)">${s ? fmt(s) : '—'}</span>
+          <span style="color:${acum>=0?'var(--verde)':'var(--vermelho)'};font-weight:600">${fmt(acum)}</span>
+        </div>`;
+      }).join('')}`;
+  }
+
+  // Chart saldo
+  if (chartSaldoInst) { chartSaldoInst.destroy(); chartSaldoInst = null; }
+  if (dias.length > 0) {
+    let acc = 0;
+    const saldos = dias.map(d => {
+      const e = vendas.filter(v=>v.data===d).reduce((s,v)=>s+Number(v.total),0);
+      const s = despesas.filter(v=>v.data===d).reduce((s,v)=>s+Number(v.valor),0);
+      acc += e - s; return +acc.toFixed(2);
+    });
+    chartSaldoInst = new Chart(document.getElementById('chartSaldo'), {
+      type: 'line',
+      data: { labels: dias, datasets: [{
+        label: 'Saldo', data: saldos,
+        borderColor: '#E8A000', backgroundColor: 'rgba(232,160,0,0.08)',
+        fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#E8A000'
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8B7355', font: {size:10} }, grid: { color: 'rgba(232,160,0,0.06)' } },
+          y: { ticks: { color: '#8B7355', font:{size:10}, callback: v => 'R$' + v.toFixed(0) }, grid: { color: 'rgba(232,160,0,0.06)' } }
+        }
+      }
+    });
+  } else {
+    document.getElementById('chartSaldo').parentNode.innerHTML = `<div class="empty-state">Sem dados para exibir</div>`;
+  }
+}
+</script>
+</body>
+</html>
