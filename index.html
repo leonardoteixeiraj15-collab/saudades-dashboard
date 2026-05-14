@@ -478,7 +478,8 @@
 const CONFIG = {
   usuario: 'admin',
   senha: 'saudades2026',
-  supabaseUrl: 'https://baasgwndykkkhblrbtta.supabase.co/rest/v1/',
+  // FIX: URL base do Supabase — sem /rest/v1/ no final
+  supabaseUrl: 'https://baasgwndykkkhblrbtta.supabase.co',
   supabaseKey: 'sb_publishable_VVnviK2jds9AExxp32YXbA_w4u4Gsqo',
 };
 
@@ -558,11 +559,13 @@ const PRODUTOS = [
 
 // ═══════════════════════════════════════════════
 // ESTADO
+// FIX: renomeado de 'supabase' para 'sbClient' para evitar
+//      conflito com o objeto global window.supabase do SDK
 // ═══════════════════════════════════════════════
-let supabase = null;
+let sbClient = null;
 let vendas = [], despesas = [];
 let chartPagInst = null, chartSaldoInst = null;
-const hoje = new Date().toISOString().split('T')[0];
+const hoje = new Date().toLocaleDateString('pt-BR');
 
 // ═══════════════════════════════════════════════
 // LOGIN
@@ -580,6 +583,7 @@ function doLogin() {
     document.getElementById('login-pass').value = '';
   }
 }
+
 function doLogout() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -588,31 +592,32 @@ function doLogout() {
 
 // ═══════════════════════════════════════════════
 // SUPABASE
+// FIX: usa window.supabase.createClient e guarda em sbClient
 // ═══════════════════════════════════════════════
 async function initSupabase() {
   try {
-    if (CONFIG.supabaseUrl !== 'COLE_SUA_URL_SUPABASE_AQUI') {
-      supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
-    }
+    sbClient = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
     await carregarDados();
   } catch(e) {
-    console.warn('Supabase não configurado, usando dados locais');
+    console.warn('Supabase não configurado, usando dados locais', e);
     await carregarDados();
   }
   renderAll();
 }
 
 async function carregarDados() {
-  if (supabase) {
+  if (sbClient) {
     try {
       const [rv, rd] = await Promise.all([
-        supabase.from('vendas').select('*').order('created_at', {ascending: false}),
-        supabase.from('despesas').select('*').order('created_at', {ascending: false})
+        sbClient.from('vendas').select('*').order('created_at', {ascending: false}),
+        sbClient.from('despesas').select('*').order('created_at', {ascending: false})
       ]);
       if (rv.data) vendas = rv.data;
       if (rd.data) despesas = rd.data;
       return;
-    } catch(e) {}
+    } catch(e) {
+      console.warn('Erro ao carregar do Supabase, usando localStorage', e);
+    }
   }
   // fallback localStorage
   vendas = JSON.parse(localStorage.getItem('sdn_vendas') || '[]');
@@ -800,8 +805,8 @@ async function addVenda() {
     created_at: now.toISOString()
   };
   vendas.unshift(venda);
-  if (supabase) {
-    try { await supabase.from('vendas').insert([venda]); } catch(e) {}
+  if (sbClient) {
+    try { await sbClient.from('vendas').insert([venda]); } catch(e) {}
   }
   salvarLocal();
   renderVendas();
@@ -814,8 +819,8 @@ async function addVenda() {
 async function delVenda(i) {
   const v = vendas[i];
   vendas.splice(i, 1);
-  if (supabase && v.id) {
-    try { await supabase.from('vendas').delete().eq('id', v.id); } catch(e) {}
+  if (sbClient && v.id) {
+    try { await sbClient.from('vendas').delete().eq('id', v.id); } catch(e) {}
   }
   salvarLocal();
   renderVendas();
@@ -865,8 +870,8 @@ async function addDespesa() {
     created_at: now.toISOString()
   };
   despesas.unshift(desp);
-  if (supabase) {
-    try { await supabase.from('despesas').insert([desp]); } catch(e) {}
+  if (sbClient) {
+    try { await sbClient.from('despesas').insert([desp]); } catch(e) {}
   }
   salvarLocal();
   renderDespesas();
@@ -879,8 +884,8 @@ async function addDespesa() {
 async function delDespesa(i) {
   const d = despesas[i];
   despesas.splice(i, 1);
-  if (supabase && d.id) {
-    try { await supabase.from('despesas').delete().eq('id', d.id); } catch(e) {}
+  if (sbClient && d.id) {
+    try { await sbClient.from('despesas').delete().eq('id', d.id); } catch(e) {}
   }
   salvarLocal();
   renderDespesas();
